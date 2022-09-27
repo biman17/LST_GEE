@@ -1,0 +1,33 @@
+
+var lst = ee.ImageCollection("MODIS/006/MYD11A2")
+    .select('LST_Day_1km')
+    .filterDate(ee.Date('2015-01-01'), ee.Date('2015-12-31'))
+
+var months = ee.List.sequence(1, 12);
+var years = ee.List.sequence(2015, 2015);
+
+var byMonthYear = ee.ImageCollection.fromImages(
+  years.map(function(y) {
+    return months.map(function (m) {
+      return lst
+        .filter(ee.Filter.calendarRange(y, y, 'year'))
+        .filter(ee.Filter.calendarRange(m, m, 'month'))
+        .mean()
+        .set('month', m).set('year', y);
+  });
+}).flatten());
+print(byMonthYear)
+
+var rwanda_geom = ee.Geometry.Rectangle([28.8333333329999988,-2.8333333329999997, 30.9166666670000012,-1.0416666670000001]);
+             
+//Export a cloud-optimized GeoTIFF.
+Export.image.toDrive({
+  image: byMonthYear.toBands(),
+  description: 'LST_Aqua_Day_1km_2015',
+  scale: 1000,
+  region: rwanda_geom,
+  fileFormat: 'GeoTIFF',
+  formatOptions: {
+    cloudOptimized: true
+  }
+});
